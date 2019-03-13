@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 )
 
 type wraper struct {
@@ -39,44 +39,52 @@ func interactKraken() {
 
 	address := connection.RemoteAddr()
 	log.Println(address.String())
-	for _ = range make([]int, 7) {
+	arr := make([]int, 7)
 
+	for range arr {
 		incomingBytes := readFromSocket(connection)
 		log.Printf("Received message: %s", incomingBytes)
 		time.Sleep(time.Millisecond * 200)
 	}
-
 }
 
 func createConnectionToKraken() (*websocket.Conn, error) {
 	websocketHost := "wss://ws.kraken.com"
 	// protocol := "wss"
-	connection, err := websocket.Dial(websocketHost, "", "")
+
+	connection, response, err := websocket.DefaultDialer.Dial(websocketHost, nil)
 	if err != nil {
 		log.Printf("ERROR creating connection to url, %v", err)
 	} else {
 		log.Printf("SUCCESS: Connection established with %s  \n", websocketHost)
+
+		if err != nil {
+			log.Println("Error marshaling json:", err)
+		}
+		log.Printf("RESPONSE: %+v", *response)
 	}
 	return connection, err
 }
 
-func writeToSocket(connection *websocket.Conn, payload []byte) int {
-	numWrites, err := connection.Write([]byte(payload))
+func writeToSocket(connection *websocket.Conn, payload []byte) error {
+
+	err := connection.WriteJSON([]byte(payload))
 	if err != nil {
 		log.Printf("%+v \n", err)
 	} else {
-		//log.Printf("SUCCESS: Wrote %d bytes to the sockets '%s'", numWrites, payload)
+		log.Printf("SUCCESS: Wrote to the sockets")
 	}
-	return numWrites
+	return err
 }
 
-func readFromSocket(connection *websocket.Conn) []byte {
-	arr := make([]byte, 500)
-	numReads, err := connection.Read(arr)
+func readFromSocket(connection *websocket.Conn) interface{} {
+	//		arr := make([]byte, 500)
+	var res interface{}
+	err := connection.ReadJSON(res)
 	if err != nil {
 		log.Printf("ERROR: Could not read from connection, %+v \n", err)
 	} else {
-		log.Printf("Success reading %d bytes from connection \n", numReads)
+		log.Printf("Success reading bytes from connection \n")
 	}
-	return arr
+	return res
 }
